@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Convivencia Escolar - I.E. Alfonso López Pumarejo</title>
+    
+    <!-- Librerías CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Tailwind Config & Custom CSS -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        deepspace: '#020617',
+                        neon: {
+                            cyan: '#00f0ff',
+                            violet: '#8a2be2',
+                            pink: '#ff007f'
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* === css/design-system.css === */
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .glass-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .glass-input:focus {
+            outline: none;
+            border-color: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .glass-btn {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.6) 0%, rgba(255, 0, 127, 0.6) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .glass-btn:hover {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.8) 0%, rgba(255, 0, 127, 0.8) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 0, 127, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* Background Aurora Effect */
+        .aurora-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            background: #020617;
+        }
+        .aurora-circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: blob 10s infinite alternate;
+        }
+        .aurora-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #8a2be2; animation-delay: 0s; }
+        .aurora-2 { top: 40%; right: -10%; width: 40vw; height: 40vw; background: #00f0ff; animation-delay: 2s; }
+        .aurora-3 { bottom: -20%; left: 20%; width: 60vw; height: 60vw; background: #ff007f; animation-delay: 4s; }
+
+        /* Toast Notifications */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 12px 24px;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.9);
+            border-left: 4px solid #00f0ff;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Background Aurora -->
+    <div class="aurora-bg">
+        <div class="aurora-circle aurora-1"></div>
+        <div class="aurora-circle aurora-2"></div>
+        <div class="aurora-circle aurora-3"></div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- === js/modules/login.js (UI) === -->
+    <div id="login-view" class="flex-1 flex items-center justify-center p-4 transition-opacity duration-500">
+        <div class="glass-panel w-full max-w-md p-8 rounded-2xl flex flex-col items-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-violet via-neon-cyan to-neon-pink"></div>
+            
+            <i data-lucide="shield-check" class="w-16 h-16 text-neon-cyan mb-4"></i>
+            <h1 class="text-2xl font-bold text-center mb-1">Convivencia Escolar</h1>
+            <p class="text-sm text-slate-400 mb-6 text-center">I.E. Alfonso López Pumarejo<br>Cartago, Valle del Cauca</p>
+            
+            <div class="w-full space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Seleccionar Rol</label>
+                    <select id="role-select" class="glass-input w-full p-3 rounded-lg appearance-none">
+                        <option value="rector" class="bg-slate-900">Rector (Francisco Quiñonez)</option>
+                        <option value="coordinador" class="bg-slate-900">Coordinador</option>
+                        <option value="orientador" class="bg-slate-900">Orientador Escolar</option>
+                        <option value="docente" class="bg-slate-900">Docente</option>
+                        <option value="estudiante" class="bg-slate-900">Estudiante / Personero</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Contraseña de acceso</label>
+                    <input type="password" id="login-pwd" class="glass-input w-full p-3 rounded-lg" placeholder="Para esta demo usa cualquier clave" value="demo123">
+                </div>
+                <button onclick="app.login()" class="glass-btn w-full py-3 rounded-lg font-bold text-white tracking-wide mt-4 flex justify-center items-center gap-2">
+                    Ingresar al Sistema <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-500 mt-6 text-center">Protegido por Ley 1581 (Habeas Data) y Ley 1098 (Código Infancia).</p>
+        </div>
+    </div>
+
+    <!-- === js/modules/app.js (UI Layout) === -->
+    <div id="app-view" class="hidden flex-1 flex h-screen w-full overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 glass-panel border-y-0 border-l-0 rounded-none flex flex-col transition-all duration-300 z-10 hidden md:flex">
+            <div class="p-6 border-b border-white/10 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-neon-violet to-neon-cyan flex items-center justify-center font-bold shadow-[0_0_15px_rgba(0,240,255,0.5)]">IE</div>
+                <div>
+                    <h2 class="font-bold text-sm leading-tight">Alfonso López P.</h2>
+                    <p class="text-[10px] text-neon-cyan" id="user-role-display">Rector</p>
+                </div>
+            </div>
+            
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" id="main-nav">
+                <!-- Nav items generated by JS based on role -->
+            </nav>
+
+            <div class="p-4 border-t border-white/10">
+                <button onclick="app.logout()" class="flex items-center gap-3 text-slate-400 hover:text-white hover:bg-white/5 w-full p-2 rounded-lg transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i> <span class="text-sm font-medium">Cerrar Sesión</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <!-- Mobile Header -->
+            <header class="md:hidden glass-panel border-x-0 border-t-0 rounded-none p-4 flex justify-between items-center z-10">
+                <h2 class="font-bold">I.E. ALP - Convivencia</h2>
+                <button onclick="app.toggleMobileMenu()" class="text-white"><i data-lucide="menu"></i></button>
+            </header>
+
+            <!-- Dynamic Views Container -->
+            <div id="views-container" class="flex-1 overflow-y-auto p-4 md:p-8 relative z-0">
+                
+                <!-- DASHBOARD VIEW -->
+                <div id="view-dashboard" class="view-section hidden space-y-6">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Panel de Control</h1>
+                            <p class="text-slate-400 mt-1">Resumen general de convivencia escolar según Ley 1620.</p>
+                        </div>
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-semibold text-neon-cyan" id="current-date"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="glass-panel p-6 rounded-xl flex items-center justify-between">
+                            <div>
+                                <p class="text-slate-400 text-sm font-semibold">Total Situaciones</p>
+                                <h3 class="text-3xl font-bold mt-1" id="stat-total">0</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                                <i data-lucide="file-text"></i>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6 rounded-xl flex items-center justify-between border-l-4 border-l-yellow-500">
+                            <div>
+                                <p class="text-slate-400 text-sm font-semibold">Casos Activos (En Proceso)</p>
+                                <h3 class="text-3xl font-bold mt-1" id="stat-activos">0</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">
+                                <i data-lucide="activity"></i>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6 rounded-xl flex items-center justify-between border-l-4 border-l-red-500">
+                            <div>
+                                <p class="text-slate-400 text-sm font-semibold">Situaciones Tipo III</p>
+                                <h3 class="text-3xl font-bold mt-1" id="stat-tipo3">0</h3>
+                            </div>
+                            <div class="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
+                                <i data-lucide="alert-triangle"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="glass-panel p-6 rounded-xl">
+                            <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="pie-chart" class="w-5 h-5 text-neon-violet"></i> Distribución por Tipos (Decreto 1965)</h3>
+                            <div class="h-64 flex justify-center items-center">
+                                <canvas id="chart-tipos"></canvas>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-6 rounded-xl">
+                            <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="bell" class="w-5 h-5 text-neon-pink"></i> Últimas Novedades</h3>
+                            <ul class="space-y-3" id="dashboard-news">
+                                <li class="text-slate-400 text-center py-4">Cargando datos...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ESTUDIANTES VIEW -->
+                <div id="view-estudiantes" class="view-section hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Gestión de Estudiantes (SIMAT)</h1>
+                    <div class="glass-panel p-6 rounded-xl border border-dashed border-white/20">
+                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                            <i data-lucide="upload-cloud" class="w-12 h-12 text-slate-400 mb-3"></i>
+                            <h3 class="font-bold mb-1">Cargar Archivo de Estudiantes</h3>
+                            <p class="text-sm text-slate-400 mb-4">Sube un archivo Excel (.xlsx) exportado del SIMAT.</p>
+                            <label class="glass-btn px-4 py-2 rounded-lg cursor-pointer flex items-center gap-2">
+                                <span>Seleccionar Excel</span>
+                                <input type="file" id="excel-upload" class="hidden" accept=".xlsx, .xls" onchange="modules.estudiantes.handleFileUpload(event)">
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm" id="table-estudiantes">
+                                <thead class="bg-white/5 border-b border-white/10">
+                                    <tr>
+                                        <th class="p-4">Documento</th>
+                                        <th class="p-4">Nombres</th>
+                                        <th class="p-4">Grado</th>
+                                        <th class="p-4">Director de Grupo</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5" id="tbody-estudiantes">
+                                    <tr><td colspan="4" class="p-8 text-center text-slate-500">No hay datos cargados. Usa la herramienta superior.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SITUACIONES VIEW -->
+                <div id="view-situaciones" class="view-section hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold">Registro de Situaciones (Ruta de Atención)</h1>
+                        <button onclick="modules.situaciones.openModal()" class="glass-btn px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Nueva Situación
+                        </button>
+                    </div>
+
+                    <div class="glass-panel rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-white/5 border-b border-white/10">
+                                    <tr>
+                                        <th class="p-4">Fecha</th>
+                                        <th class="p-4">Estudiante / Implicado</th>
+                                        <th class="p-4">Tipo</th>
+                                        <th class="p-4">Descripción Breve</th>
+                                        <th class="p-4">Estado</th>
+                                        <th class="p-4">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-white/5" id="tbody-situaciones">
+                                    <tr><td colspan="6" class="p-8 text-center text-slate-500">Cargando registros...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOT IA VIEW -->
+                <div id="view-bot" class="view-section hidden h-[80vh] flex flex-col">
+                    <div class="mb-4">
+                        <h1 class="text-2xl font-bold flex items-center gap-2">
+                            <i data-lucide="bot" class="w-8 h-8 text-neon-cyan"></i> Asistente de Convivencia (IA)
+                        </h1>
+                        <p class="text-sm text-slate-400">Consultas sobre el Manual de Convivencia, Ley 1620 y protocolos.</p>
+                    </div>
+                    
+                    <div class="flex-1 glass-panel rounded-xl flex flex-col overflow-hidden">
+                        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4">
+                            <!-- Welcome Message -->
+                            <div class="flex gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0"><i data-lucide="sparkles" class="w-4 h-4 text-white"></i></div>
+                                <div class="glass-panel bg-cyan-900/20 p-3 rounded-lg rounded-tl-none max-w-[80%]">
+                                    <p class="text-sm">¡Hola! Soy el asistente experto en convivencia escolar de la I.E. Alfonso López Pumarejo. Conozco el Manual de Convivencia y las leyes vigentes. ¿En qué te puedo ayudar hoy?</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 border-t border-white/10 bg-black/20">
+                            <form id="chat-form" onsubmit="modules.bot.sendMessage(event)" class="flex gap-2">
+                                <input type="text" id="chat-input" class="glass-input flex-1 p-3 rounded-lg text-sm" placeholder="Ej: ¿Cuál es el protocolo para una situación Tipo II?" required autocomplete="off">
+                                <button type="submit" class="glass-btn px-4 py-2 rounded-lg flex items-center justify-center">
+                                    <i data-lucide="send" class="w-5 h-5"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MANUAL VIEW -->
+                <div id="view-manual" class="view-section hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Manual de Convivencia Dinámico</h1>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div class="glass-panel p-5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onclick="modules.ui.toggleAccordion('acc-1')">
+                                <div class="flex justify-between items-center font-bold text-neon-cyan">
+                                    <span>Situaciones Tipo I</span>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="icon-acc-1"></i>
+                                </div>
+                                <div id="acc-1" class="hidden mt-3 text-sm text-slate-300 space-y-2">
+                                    <p>Conflictos manejados inadecuadamente y situaciones esporádicas que inciden negativamente en el clima escolar, y que en ningún caso generan daños al cuerpo o a la salud.</p>
+                                    <ul class="list-disc pl-5">
+                                        <li>Llegadas tardes sin justificación.</li>
+                                        <li>Uso de apodos, vocabulario soez.</li>
+                                        <li>Portar incorrectamente el uniforme escolar.</li>
+                                        <li>Uso de dispositivos electrónicos en clase sin autorización.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <div class="glass-panel p-5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onclick="modules.ui.toggleAccordion('acc-2')">
+                                <div class="flex justify-between items-center font-bold text-yellow-400">
+                                    <span>Situaciones Tipo II</span>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="icon-acc-2"></i>
+                                </div>
+                                <div id="acc-2" class="hidden mt-3 text-sm text-slate-300 space-y-2">
+                                    <p>Situaciones de agresión escolar, acoso escolar (bullying) y ciberacoso (Ciberbullying), que no revistan las características de la comisión de un delito y se presenten de manera repetida.</p>
+                                    <ul class="list-disc pl-5">
+                                        <li>Agresión física sin generar incapacidad.</li>
+                                        <li>Agresión verbal, humillación, discriminación repetida.</li>
+                                        <li>Ciberacoso, difusión de rumores.</li>
+                                        <li>Realizar fraude en evaluaciones.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="glass-panel p-5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors" onclick="modules.ui.toggleAccordion('acc-3')">
+                                <div class="flex justify-between items-center font-bold text-red-400">
+                                    <span>Situaciones Tipo III</span>
+                                    <i data-lucide="chevron-down" class="w-4 h-4 transition-transform" id="icon-acc-3"></i>
+                                </div>
+                                <div id="acc-3" class="hidden mt-3 text-sm text-slate-300 space-y-2">
+                                    <p>Situaciones que sean constitutivas de presuntos delitos contra la libertad, integridad y formación sexual, o cualquier otro delito (Ley Penal).</p>
+                                    <ul class="list-disc pl-5">
+                                        <li>Agresión física generando lesión personal o incapacidad.</li>
+                                        <li>Portar armas, explosivos.</li>
+                                        <li>Portar, consumir o distribuir sustancias alucinógenas.</li>
+                                        <li>Abuso o maltrato físico, psicológico o sexual.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="glass-panel p-6 rounded-xl flex flex-col justify-center items-center text-center space-y-4">
+                            <i data-lucide="book-open" class="w-16 h-16 text-slate-400"></i>
+                            <h3 class="text-xl font-bold">Documento Completo</h3>
+                            <p class="text-sm text-slate-400">Descarga el Manual de Convivencia oficial aprobado por el Consejo Directivo.</p>
+                            <button onclick="modules.ui.generatePDF()" class="glass-btn px-6 py-3 rounded-lg font-bold flex items-center gap-2">
+                                <i data-lucide="download" class="w-5 h-5"></i> Generar Resumen PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMUNICACIONES VIEW -->
+                <div id="view-comunicaciones" class="view-section hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Canal de Comunicación Institucional</h1>
+                    <div class="glass-panel p-6 rounded-xl max-w-lg">
+                        <div class="flex items-center gap-3 mb-4 text-[#25D366]">
+                            <i data-lucide="message-circle" class="w-8 h-8"></i>
+                            <h3 class="font-bold text-lg text-white">Citación por WhatsApp</h3>
+                        </div>
+                        <p class="text-sm text-slate-400 mb-6">Genera un enlace rápido para citar acudientes utilizando el canal oficial.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Celular del Acudiente</label>
+                                <input type="number" id="wa-phone" class="glass-input w-full p-3 rounded-lg" placeholder="Ej: 3001234567">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Motivo / Mensaje</label>
+                                <textarea id="wa-msg" class="glass-input w-full p-3 rounded-lg h-24" placeholder="Estimado acudiente, lo citamos cordialmente a la I.E. Alfonso López Pumarejo el día..."></textarea>
+                            </div>
+                            <button onclick="modules.comunicaciones.sendWA()" class="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-black font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2">
+                                <i data-lucide="external-link" class="w-4 h-4"></i> Abrir WhatsApp Web
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LUDICA VIEW -->
+                <div id="view-ludica" class="view-section hidden space-y-6">
+                    <h1 class="text-2xl font-bold text-center">Zona Lúdica: Reto de Convivencia</h1>
+                    <p class="text-center text-slate-400 max-w-2xl mx-auto">Pon a prueba tus conocimientos sobre la Ley 1620 y nuestro manual. Ideal para orientación en aula.</p>
+                    
+                    <div class="glass-panel max-w-2xl mx-auto p-8 rounded-xl text-center">
+                        <div id="quiz-container">
+                            <div class="w-16 h-16 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i data-lucide="gamepad-2" class="w-8 h-8 text-white"></i>
+                            </div>
+                            <h2 class="text-xl font-bold mb-8" id="quiz-question">¿Estás listo para iniciar el reto?</h2>
+                            <div class="grid grid-cols-1 gap-4" id="quiz-options">
+                                <button onclick="modules.ludica.startQuiz()" class="glass-btn py-3 rounded-lg font-bold">Comenzar Test</button>
+                            </div>
+                            <p class="mt-6 text-sm text-neon-cyan font-bold hidden" id="quiz-score"></p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL NUEVA SITUACIÓN -->
+    <div id="modal-situacion" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/60 backdrop-blur-sm px-4">
+        <div class="glass-panel w-full max-w-md p-6 rounded-2xl relative border-t-4 border-t-neon-cyan">
+            <button onclick="modules.situaciones.closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h2 class="text-xl font-bold mb-4">Registrar Situación</h2>
+            
+            <form id="form-situacion" onsubmit="modules.situaciones.save(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Estudiante</label>
+                    <input type="text" id="sit-estudiante" class="glass-input w-full p-2 rounded-lg text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Tipo de Situación (Dec 1965)</label>
+                    <select id="sit-tipo" class="glass-input w-full p-2 rounded-lg text-sm bg-slate-800" required>
+                        <option value="Tipo I">Tipo I (Faltas Leves / Inadecuadas)</option>
+                        <option value="Tipo II">Tipo II (Bullying / Acoso sin lesión)</option>
+                        <option value="Tipo III">Tipo III (Delito / Armas / Drogas)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Descripción de los hechos</label>
+                    <textarea id="sit-desc" class="glass-input w-full p-2 rounded-lg text-sm h-20" required></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Estado de la Ruta</label>
+                    <select id="sit-estado" class="glass-input w-full p-2 rounded-lg text-sm bg-slate-800">
+                        <option value="Reportado">Reportado</option>
+                        <option value="En Atención">En Atención / Mediación</option>
+                        <option value="Remitido">Remitido a Comité/Autoridad</option>
+                        <option value="Cerrado">Cerrado / Resuelto</option>
+                    </select>
+                </div>
+                <button type="submit" class="glass-btn w-full py-2.5 rounded-lg font-bold flex justify-center items-center gap-2 mt-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> Guardar Registro
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- === js/firebase-config.js & js/main.js === -->
+    <script type="module">
+        // --- 1. FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken,
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            onSnapshot, 
+            query,
+            orderBy, /* NOT USED PER RULES */
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 2. CONFIGURACIÓN GLOBALES ---
+        const FALLBACK_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyDtJIvGAyMnKpaHwLAE6BpK3TgXVlUmGGg", // From provided txt
+            authDomain: "matetic-20003.firebaseapp.com",
+            projectId: "matetic-20003",
+            storageBucket: "matetic-20003.firebasestorage.app",
+            messagingSenderId: "1087153850752",
+            appId: "1:1087153850752:web:63fbb6ee32374f82e69965"
+        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : FALLBACK_FIREBASE_CONFIG;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'co-iepumarejo-convivencia';
+        const geminiApiKey = ""; // Required empty by system prompt rules
+
+        // Firebase Initialization
+        const fbApp = initializeApp(firebaseConfig);
+        const auth = getAuth(fbApp);
+        const db = getFirestore(fbApp);
+
+        // State variables
+        let currentUserInfo = null;
+        let globalSituaciones = [];
+        let myChart = null;
+
+        // Make functions globally available for inline HTML handlers
+        window.app = {};
+        window.modules = {
+            ui: {},
+            situaciones: {},
+            bot: {},
+            estudiantes: {},
+            comunicaciones: {},
+            ludica: {}
+        };
+
+        // --- 3. CORE APP LOGIC ---
+        
+        // Show Toast Utility
+        window.showToast = (message, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast border-l-4 ${type === 'error' ? 'border-red-500' : 'border-neon-cyan'}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        };
+
+        // DOM Ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            // Authentication Protocol (Rule 3)
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Error:", err);
+                showToast("Error de conexión al servidor seguro.", "error");
+            }
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // Start authenticated listeners only after valid login through UI
+                    console.log("Firebase Auth OK:", user.uid);
+                }
+            });
+        });
+
+        // App Navigation
+        window.app.login = () => {
+            const role = document.getElementById('role-select').value;
+            const textRole = document.getElementById('role-select').options[document.getElementById('role-select').selectedIndex].text;
+            currentUserInfo = { role, name: textRole };
+            
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+            document.getElementById('user-role-display').innerText = textRole;
+            
+            modules.ui.buildSidebar(role);
+            app.switchView('dashboard');
+            modules.situaciones.initListener(); // Initialize Firestore listener
+        };
+
+        window.app.logout = () => {
+            document.getElementById('app-view').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+            currentUserInfo = null;
+        };
+
+        window.app.switchView = (viewName) => {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            // Highlight nav
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('bg-white/10', 'text-white', 'border-r-2', 'border-neon-cyan');
+                el.classList.add('text-slate-400');
+            });
+            const activeNav = document.getElementById(`nav-${viewName}`);
+            if(activeNav) {
+                activeNav.classList.remove('text-slate-400');
+                activeNav.classList.add('bg-white/10', 'text-white', 'border-r-2', 'border-neon-cyan');
+            }
+
+            // Specific View Initializations
+            if(viewName === 'dashboard') modules.ui.updateDashboard();
+        };
+
+        window.app.toggleMobileMenu = () => {
+            const sidebar = document.querySelector('aside');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('absolute');
+            sidebar.classList.toggle('h-full');
+            sidebar.classList.toggle('bg-deepspace');
+        };
+
+        // --- 4. MODULES ---
+
+        // UI & Layout
+        modules.ui.buildSidebar = (role) => {
+            const nav = document.getElementById('main-nav');
+            let items = [
+                { id: 'dashboard', icon: 'layout-dashboard', text: 'Dashboard' },
+                { id: 'situaciones', icon: 'alert-triangle', text: 'Ruta de Atención' },
+                { id: 'manual', icon: 'book', text: 'Manual de Convivencia' },
+                { id: 'bot', icon: 'bot', text: 'Asistente IA' },
+                { id: 'ludica', icon: 'gamepad-2', text: 'Zona Lúdica' }
+            ];
+
+            // Role-based access
+            if (['rector', 'coordinador', 'orientador'].includes(role)) {
+                items.splice(1, 0, { id: 'estudiantes', icon: 'users', text: 'Estudiantes SIMAT' });
+                items.push({ id: 'comunicaciones', icon: 'message-circle', text: 'Comunicaciones' });
+            }
+
+            nav.innerHTML = items.map(i => `
+                <button id="nav-${i.id}" onclick="app.switchView('${i.id}')" class="nav-item w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all text-left">
+                    <i data-lucide="${i.icon}" class="w-5 h-5"></i> ${i.text}
+                </button>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        modules.ui.toggleAccordion = (id) => {
+            const content = document.getElementById(id);
+            const icon = document.getElementById(`icon-${id}`);
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        };
+
+        modules.ui.updateDashboard = () => {
+            if(!globalSituaciones) return;
+            document.getElementById('stat-total').innerText = globalSituaciones.length;
+            document.getElementById('stat-activos').innerText = globalSituaciones.filter(s => s.estado !== 'Cerrado').length;
+            document.getElementById('stat-tipo3').innerText = globalSituaciones.filter(s => s.tipo === 'Tipo III').length;
+
+            const t1 = globalSituaciones.filter(s => s.tipo === 'Tipo I').length;
+            const t2 = globalSituaciones.filter(s => s.tipo === 'Tipo II').length;
+            const t3 = globalSituaciones.filter(s => s.tipo === 'Tipo III').length;
+
+            // Chart.js
+            const ctx = document.getElementById('chart-tipos').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Tipo I', 'Tipo II', 'Tipo III'],
+                    datasets: [{
+                        data: [t1 || 1, t2 || 1, t3 || 0], // Avoid empty chart look initially
+                        backgroundColor: ['#00f0ff', '#facc15', '#ff007f'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1' } }
+                    }
+                }
+            });
+
+            // News feed
+            const newsUl = document.getElementById('dashboard-news');
+            if(globalSituaciones.length === 0) {
+                newsUl.innerHTML = '<li class="text-slate-400 text-sm">No hay registros recientes.</li>';
+            } else {
+                const latest = [...globalSituaciones].sort((a,b) => b.timestamp - a.timestamp).slice(0, 4);
+                newsUl.innerHTML = latest.map(s => `
+                    <li class="border-b border-white/5 pb-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-white truncate w-32">${s.estudiante}</span>
+                            <span class="text-xs px-2 py-1 rounded bg-white/10 ${s.tipo === 'Tipo III' ? 'text-red-400' : 'text-slate-300'}">${s.tipo}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1 truncate">${s.descripcion}</p>
+                    </li>
+                `).join('');
+            }
+        };
+
+        modules.ui.generatePDF = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text("Resumen Manual de Convivencia", 20, 20);
+            doc.setFontSize(12);
+            doc.text("I.E. Alfonso López Pumarejo - Cartago", 20, 30);
+            doc.setFontSize(10);
+            doc.text("Situaciones Tipo I: Conflictos menores. (Ej. Llegadas tarde)", 20, 50);
+            doc.text("Situaciones Tipo II: Acoso escolar, agresión sin lesión.", 20, 60);
+            doc.text("Situaciones Tipo III: Delitos, lesiones graves, drogas.", 20, 70);
+            doc.text("Ruta de atención: Promoción -> Prevención -> Atención -> Seguimiento", 20, 90);
+            doc.save("Resumen_Convivencia_ALP.pdf");
+            showToast("PDF Generado correctamente.");
+        };
+
+        // Situaciones CRUD (Firebase Firestore)
+        modules.situaciones.initListener = () => {
+            const user = auth.currentUser;
+            if(!user) return;
+
+            // RULE 1: Strict Paths
+            const situacionRef = collection(db, 'artifacts', appId, 'public', 'data', 'situaciones');
+            
+            // RULE 2: No Complex Queries (Fetch all, sort in memory)
+            onSnapshot(situacionRef, (snapshot) => {
+                globalSituaciones = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    globalSituaciones.push({ id: doc.id, ...data, timestamp: data.fechaCrecion?.toMillis() || Date.now() });
+                });
+                
+                // Sort in memory
+                globalSituaciones.sort((a, b) => b.timestamp - a.timestamp);
+                
+                modules.situaciones.renderTable();
+                if(document.getElementById('view-dashboard').classList.contains('hidden') === false){
+                    modules.ui.updateDashboard();
+                }
+            }, (error) => {
+                console.error("Firestore error:", error);
+                showToast("Error al cargar datos", "error");
+            });
+        };
+
+        modules.situaciones.renderTable = () => {
+            const tbody = document.getElementById('tbody-situaciones');
+            if(globalSituaciones.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No hay situaciones registradas.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = globalSituaciones.map(s => {
+                let badgeColor = 'bg-cyan-500/20 text-cyan-400';
+                if(s.tipo === 'Tipo II') badgeColor = 'bg-yellow-500/20 text-yellow-400';
+                if(s.tipo === 'Tipo III') badgeColor = 'bg-red-500/20 text-red-400';
+
+                const d = new Date(s.timestamp);
+                const dateStr = `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+
+                return `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="p-4 text-slate-400">${dateStr}</td>
+                    <td class="p-4 font-medium">${s.estudiante}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs ${badgeColor}">${s.tipo}</span></td>
+                    <td class="p-4 text-slate-400 truncate max-w-[200px]" title="${s.descripcion}">${s.descripcion}</td>
+                    <td class="p-4 text-slate-300">${s.estado}</td>
+                    <td class="p-4">
+                        <button class="text-neon-cyan hover:text-white"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        };
+
+        modules.situaciones.openModal = () => {
+            if(['estudiante'].includes(currentUserInfo.role)) {
+                showToast("No tienes permisos para registrar situaciones.", "error");
+                return;
+            }
+            document.getElementById('modal-situacion').classList.remove('hidden');
+        };
+        modules.situaciones.closeModal = () => document.getElementById('modal-situacion').classList.add('hidden');
+
+        modules.situaciones.save = async (e) => {
+            e.preventDefault();
+            const user = auth.currentUser;
+            if(!user) return;
+
+            const estudiante = document.getElementById('sit-estudiante').value;
+            const tipo = document.getElementById('sit-tipo').value;
+            const descripcion = document.getElementById('sit-desc').value;
+            const estado = document.getElementById('sit-estado').value;
+
+            try {
+                const situacionRef = collection(db, 'artifacts', appId, 'public', 'data', 'situaciones');
+                await addDoc(situacionRef, {
+                    estudiante,
+                    tipo,
+                    descripcion,
+                    estado,
+                    creadorRol: currentUserInfo.role,
+                    creadorUid: user.uid,
+                    fechaCrecion: serverTimestamp()
+                });
+                showToast("Situación guardada exitosamente.");
+                modules.situaciones.closeModal();
+                document.getElementById('form-situacion').reset();
+            } catch (err) {
+                console.error(err);
+                showToast("Error al guardar.", "error");
+            }
+        };
+
+        // Estudiantes (SheetJS Excel parsing)
+        modules.estudiantes.handleFileUpload = (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                modules.estudiantes.renderTable(json);
+                showToast(`Cargados ${json.length} estudiantes del SIMAT.`);
+            };
+            reader.readAsBinaryString(file);
+        };
+
+        modules.estudiantes.renderTable = (data) => {
+            const tbody = document.getElementById('tbody-estudiantes');
+            if(data.length === 0) return;
+            
+            // Limit to 20 for UI demo
+            const renderData = data.slice(0, 20);
+            
+            tbody.innerHTML = renderData.map(r => {
+                // Try to guess columns based on typical SIMAT or fallback to first keys
+                const keys = Object.keys(r);
+                const doc = r['Documento'] || r['DOCUMENTO'] || r[keys[0]] || 'N/A';
+                const nombre = r['Nombre'] || r['NOMBRES'] || r[keys[1]] || 'N/A';
+                const grado = r['Grado'] || r['GRADO'] || r[keys[2]] || 'N/A';
+                
+                return `
+                <tr>
+                    <td class="p-4 text-slate-400">${doc}</td>
+                    <td class="p-4 font-medium">${nombre}</td>
+                    <td class="p-4">${grado}</td>
+                    <td class="p-4 text-slate-400">Por Asignar</td>
+                </tr>
+                `;
+            }).join('');
+        };
+
+        // Comunicaciones (WhatsApp)
+        modules.comunicaciones.sendWA = () => {
+            const phone = document.getElementById('wa-phone').value;
+            const msg = document.getElementById('wa-msg').value;
+            if(!phone || !msg) {
+                showToast("Completa los campos.", "error");
+                return;
+            }
+            const encoded = encodeURIComponent(msg);
+            window.open(`https://wa.me/57${phone}?text=${encoded}`, '_blank');
+        };
+
+        // Zona Lúdica
+        const quizData = [
+            { q: "Según la Ley 1620, ¿qué tipo es una llegada tarde recurrente?", a: "Tipo I" },
+            { q: "¿Qué instancia institucional aprueba el Manual de Convivencia?", a: "Consejo Directivo" },
+            { q: "El acoso escolar (Bullying) sin lesión física es tipo...", a: "Tipo II" },
+            { q: "¿Quién preside el Comité Escolar de Convivencia?", a: "Rector" }
+        ];
+        let currentQuiz = 0;
+        let score = 0;
+
+        modules.ludica.startQuiz = () => {
+            currentQuiz = 0; score = 0;
+            document.getElementById('quiz-score').classList.add('hidden');
+            modules.ludica.showQuestion();
+        };
+
+        modules.ludica.showQuestion = () => {
+            if(currentQuiz >= quizData.length) {
+                document.getElementById('quiz-question').innerText = "¡Reto Completado!";
+                document.getElementById('quiz-options').innerHTML = `<button onclick="modules.ludica.startQuiz()" class="glass-btn py-3 rounded-lg font-bold">Reintentar</button>`;
+                document.getElementById('quiz-score').innerText = `Puntaje Final: ${score}/${quizData.length}`;
+                document.getElementById('quiz-score').classList.remove('hidden');
+                return;
+            }
+
+            const q = quizData[currentQuiz];
+            document.getElementById('quiz-question').innerText = q.q;
+            
+            // Generate dummy options mixing answers
+            let options = [q.a, "Tipo III", "Comité de Convivencia", "Docente Orientador"].sort(() => Math.random() - 0.5);
+            // Ensure unique basic options
+            options = [...new Set(options)];
+            if(options.length < 3) options.push("Otro");
+
+            document.getElementById('quiz-options').innerHTML = options.map(opt => `
+                <button onclick="modules.ludica.answer('${opt}', '${q.a}')" class="glass-input hover:bg-white/10 py-3 rounded-lg text-left px-4 transition-colors">${opt}</button>
+            `).join('');
+        };
+
+        modules.ludica.answer = (selected, correct) => {
+            if(selected === correct) {
+                score++;
+                showToast("¡Correcto!");
+            } else {
+                showToast("Incorrecto", "error");
+            }
+            currentQuiz++;
+            modules.ludica.showQuestion();
+        };
+
+        // --- 5. GEMINI API BOT ---
+        const systemPrompt = `
+        Eres el Asistente Experto en Convivencia Escolar de la Institución Educativa Alfonso López Pumarejo (ubicada en Cartago, Valle del Cauca).
+        Rector: Francisco Quiñonez.
+        Tu rol es responder dudas de estudiantes, docentes y padres basado estrictamente en el Manual de Convivencia (2023), la Ley 1620, el Decreto 1965 y la Ley 1098 (Código de Infancia).
+        Reglas de tipificación:
+        - Situaciones Tipo I: Conflictos mal manejados, esporádicos, sin daño (ej. llegadas tarde, vocabulario soez, uniforme).
+        - Situaciones Tipo II: Agresión, acoso, bullying repetitivo, ciberacoso que NO constituyan delito.
+        - Situaciones Tipo III: Delitos sexuales, armas, drogas, agresiones con lesión grave.
+        Ruta de Atención: Promoción, Prevención, Atención, Seguimiento.
+        Responde SIEMPRE de manera amable, formativa y pedagógica en español. Sé conciso.
+        `;
+
+        modules.bot.sendMessage = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const chatBox = document.getElementById('chat-messages');
+            
+            // Add user message
+            chatBox.innerHTML += `
+                <div class="flex gap-3 justify-end">
+                    <div class="glass-panel bg-violet-900/20 p-3 rounded-lg rounded-tr-none max-w-[80%]">
+                        <p class="text-sm">${text}</p>
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Loading state
+            const loadingId = 'loading-' + Date.now();
+            chatBox.innerHTML += `
+                <div id="${loadingId}" class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0"><i data-lucide="sparkles" class="w-4 h-4 text-white"></i></div>
+                    <div class="glass-panel p-3 rounded-lg rounded-tl-none animate-pulse">
+                        <p class="text-sm">Analizando normativa institucional...</p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                // Exponential backoff retry logic as requested by system rules
+                const callGemini = async (retries = 5, delay = 1000) => {
+                    const payload = {
+                        contents: [{ parts: [{ text: text }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    };
+                    
+                    // In a real environment, the API key is injected.
+                    // Fallback to empty string logic per prompt instruction.
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+                    
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        if(!response.ok) throw new Error(`HTTP ${response.status}`);
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude formular una respuesta.";
+                    } catch (err) {
+                        if (retries > 0) {
+                            await new Promise(r => setTimeout(r, delay));
+                            return callGemini(retries - 1, delay * 2);
+                        } else {
+                            throw err;
+                        }
+                    }
+                };
+
+                const reply = await callGemini();
+                
+                document.getElementById(loadingId).remove();
+                
+                // Parse markdown-like bold text simply for UI
+                const formattedReply = reply.replace(/\*\*(.*?)\*\*/g, '<strong class="text-neon-cyan">$1</strong>');
+
+                chatBox.innerHTML += `
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0"><i data-lucide="sparkles" class="w-4 h-4 text-white"></i></div>
+                        <div class="glass-panel bg-cyan-900/20 p-3 rounded-lg rounded-tl-none max-w-[80%]">
+                            <p class="text-sm whitespace-pre-wrap">${formattedReply}</p>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                console.error(err);
+                document.getElementById(loadingId).remove();
+                chatBox.innerHTML += `
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0"><i data-lucide="alert-triangle" class="w-4 h-4 text-white"></i></div>
+                        <div class="glass-panel bg-red-900/20 p-3 rounded-lg rounded-tl-none max-w-[80%] border-red-500/50">
+                            <p class="text-sm">Error de conexión al servidor de IA. Asegúrate de tener configurada la llave de API en el entorno.</p>
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+    </script>
+</body>
+</html>
